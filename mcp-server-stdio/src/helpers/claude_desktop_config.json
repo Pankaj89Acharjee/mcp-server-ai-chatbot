@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "weather": {
+      "command": "node",
+      "type": "stdio",
+      "args": ["F:\\Nodeprogramming\\GCPSDK\\mcp-server-http\\build\\index.js"],
+      "cwd": "F:\\Nodeprogramming\\GCPSDK\\mcp-server-http"
+    }
+  }
+}

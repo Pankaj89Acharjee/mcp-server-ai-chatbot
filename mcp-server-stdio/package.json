@@ -1,0 +1,42 @@
+{
+  "name": "mcp-server-http",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "build:unix": "tsc && chmod 755 build/index.js",
+    "dev": "tsx src/index.ts",
+    "start": "node build/index.js"
+  },
+  "files": [
+    "build"
+  ],
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@langchain/community": "^0.3.53",
+    "@langchain/core": "^0.3.72",
+    "@langchain/google-genai": "^0.2.16",
+    "@langchain/langgraph": "^0.4.6",
+    "@modelcontextprotocol/sdk": "^1.17.4",
+    "@types/pg": "^8.15.5",
+    "@types/sequelize": "^4.28.20",
+    "dotenv": "^17.2.1",
+    "pg": "^8.16.3",
+    "pg-hstore": "^2.3.4",
+    "reflect-metadata": "^0.2.2",
+    "sequelize": "^6.37.7",
+    "ts-node": "^10.9.2",
+    "typeorm": "^0.3.26",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

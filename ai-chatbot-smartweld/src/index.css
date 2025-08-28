@@ -1,0 +1,487 @@
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap");
+
+body {
+  margin: 0;
+  font-family: "Open Sans", sans-serif;
+  padding: 0;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  section {
+    @apply py-20;
+  }
+}
+
+@layer components {
+  .container {
+    @apply max-w-full w-[1440px] mx-auto px-1;
+  }
+
+  .heading {
+    @apply text-[44px] leading-[54px] font-extrabold text-sky-700;
+  }
+
+  .textParagraph {
+    @apply leading-7 text-sm mt-4 font-[400] text-gray-700;
+  }
+
+  .dark-theme-card {
+    @apply shadow-lg bg-slate-800 text-white rounded-lg border border-slate-700;
+  }
+
+  .dark-theme-card .ant-card-head {
+    color: white;
+    border-bottom: 1px solid #475569; /* slate-600 */
+  }
+
+  .dark-theme-card .ant-card-body {
+    padding: 0.5rem;
+  }
+}
+
+.ant-table-wrapper .ant-table-tbody .ant-table-row > .ant-table-cell-row-hover {
+  background-color: #475569 !important; /* slate-600 */
+}
+
+.dark-theme-select .ant-select-selection-placeholder {
+  color: #cbd5e1 !important; /* slate-300 */
+}
+
+.dark-theme-select .ant-select-selection-item {
+  color: #cbd5e1 !important; /* slate-300 */
+}
+
+.dark-theme-select .ant-select-selector {
+  background-color: #1e293b !important; /* slate-800 */
+  color: #cbd5e1 !important; /* slate-300 */
+  border-color: #334155 !important; /* slate-700 */
+  border-radius: 0.375rem !important; /* rounded-lg */
+  padding: 4px 11px !important;
+}
+
+.dark-theme-select .ant-select-arrow {
+  color: #94a3b8 !important; /* slate-400 */
+}
+
+/* Hover state */
+.dark-theme-select .ant-select-selector:hover {
+  background-color: #334155 !important; /* slate-700 */
+  color: #ffffff !important;
+}
+
+/* Focused (open) state */
+.dark-theme-select .ant-select-focused .ant-select-selector {
+  border-color: #64748b !important; /* slate-500 */
+}
+
+/* Disabled state */
+.dark-theme-select .ant-select-disabled .ant-select-selector {
+  background-color: #475569 !important; /* slate-600 */
+  color: #64748b !important; /* slate-500 */
+}
+
+.dark-theme-model .ant-modal-content {
+  padding: 0px;
+}
+
+/* Custom styles for Ant Design tables */
+.ant-table
+  .ant-table-container
+  .ant-table-content
+  table
+  thead.ant-table-thead
+  .ant-table-cell {
+  background-color: rgba(38, 40, 41, 0.8);
+  color: white;
+}
+
+.ant-table-tbody > tr.ant-table-row:hover > td,
+.ant-table-tbody > tr > td.ant-table-cell-row-hover {
+  background-color: rgb(97, 94, 94);
+}
+
+/* Custom card styles */
+.ant-card-head {
+  border-bottom: 1px solid #e8e8e8;
+  padding: 0 16px;
+}
+
+.ant-card-head-title {
+  font-weight: 600;
+}
+
+/* Progress bar customization */
+.ant-progress-circle .ant-progress-text {
+  font-weight: bold;
+  font-size: 24px;
+}
+
+.dark-theme-table .ant-table {
+  background: #1e293b !important; /* slate-800 */
+  color: #cbd5e1 !important; /* slate-300 */
+  border-radius: 0.375rem !important; /* rounded-lg */
+}
+
+.ant-table-wrapper td.ant-table-column-sort {
+  background-color: #1e293b !important; /* slate-700 */
+}
+.ant-table-wrapper .ant-table-filter-trigger {
+  color: #cbd5e1 !important; /* slate-300 */
+}
+.ant-table-wrapper .ant-table-column-sorter {
+  color: #cbd5e1 !important; /* slate-300 */
+}
+
+.dark-theme-table .ant-table-thead > tr > th {
+  background: #334155 !important; /* slate-700 */
+  color: white !important;
+  border-bottom: 1px solid #475569 !important; /* slate-600 */
+}
+
+.dark-theme-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #475569 !important; /* slate-600 */
+  color: #cbd5e1 !important; /* slate-300 */
+  padding: 8px 8px !important; /* Reduced padding */
+}
+
+.dark-theme-table .ant-table-tbody > tr.ant-table-row:hover > td {
+  background: #334155 !important; /* slate-700 */
+}
+
+/* Pagination container styles */
+.dark-theme-table .ant-pagination {
+  margin-top: 16px;
+  text-align: right;
+}
+
+/* Individual pagination items (page numbers) */
+.dark-theme-table .ant-pagination-item {
+  background-color: #334155 !important; /* slate-700 */
+  border: 1px solid #475569 !important; /* slate-600 */
+}
+
+/* Text color for pagination items */
+.dark-theme-table .ant-pagination-item a {
+  color: #cbd5e1 !important; /* slate-300 */
+}
+
+/* Active pagination item */
+.dark-theme-table .ant-pagination-item-active {
+  background-color: #475569 !important; /* slate-600 */
+  border-color: #64748b !important; /* slate-500 */
+}
+
+.dark-theme-table .ant-pagination-item-active a {
+  color: white !important;
+}
+
+/* Previous and Next buttons */
+.dark-theme-table .ant-pagination-prev .ant-pagination-item-link,
+.dark-theme-table .ant-pagination-next .ant-pagination-item-link {
+  background-color: #334155 !important; /* slate-700 */
+  border: 1px solid #475569 !important; /* slate-600 */
+  color: #cbd5e1 !important; /* slate-300 */
+}
+
+/* Hover state for Previous and Next buttons */
+.dark-theme-table .ant-pagination-prev:hover .ant-pagination-item-link,
+.dark-theme-table .ant-pagination-next:hover .ant-pagination-item-link {
+  background-color: #475569 !important; /* slate-600 */
+  color: white !important;
+}
+
+/* Disabled state for pagination buttons */
+.dark-theme-table .ant-pagination-disabled .ant-pagination-item-link {
+  color: #64748b !important; /* slate-500 */
+  background-color: #1e293b !important; /* slate-800 */
+  border-color: #475569 !important; /* slate-600 */
+}
+
+/* Total text (if displayed) */
+.dark-theme-table .ant-pagination-total-text {
+  color: #cbd5e1 !important; /* slate-300 */
+}
+
+.dark-theme-table .ant-pagination-item-ellipsis {
+  color: #475569 !important; /* slate-300 */
+}
+
+.dark-theme-table .ant-table-placeholder {
+  background-color: #1e293b !important; /* slate-800 */
+  color: #cbd5e1 !important; /* slate-300 */
+}
+
+.dark-theme-table .ant-table-placeholder .ant-table-cell {
+  background-color: #475569 !important; /* slate-600 */
+}
+
+.dark-theme-table .ant-table-placeholder .ant-empty-description {
+  color: #cbd5e1 !important; /* slate-300 */
+}
+
+/* Base (unselected) */
+.dark-theme-radio .ant-radio-button-wrapper {
+  background-color: #1e293b !important; /* slate-800 */
+  color: #cbd5e1 !important; /* slate-300 */
+  border-color: #334155 !important; /* slate-700 */
+}
+
+/* Hover */
+.dark-theme-radio .ant-radio-button-wrapper:hover {
+  background-color: #334155 !important; /* slate-700 */
+  color: #ffffff !important;
+}
+
+/* Checked (selected) */
+.dark-theme-radio .ant-radio-button-wrapper-checked {
+  background-color: #475569 !important; /* slate-600 */
+  color: #ffffff !important;
+  border-color: #64748b !important; /* slate-500 */
+}
+
+/* Checked + hover */
+.dark-theme-radio .ant-radio-button-wrapper-checked:hover {
+  background-color: #475569 !important;
+  color: #ffffff !important;
+}
+
+.dark-theme-model .ant-modal .ant-modal-content {
+  background-color: #000 !important;
+}
+
+/* Styles for Recharts Text */
+.recharts-text,
+.recharts-label {
+  fill: #94a3b8; /* slate-400 */
+  font-size: 0.75rem; /* text-xs */
+}
+
+.recharts-legend-item-text {
+  color: #cbd5e1 !important; /* slate-300 */
+}
+
+.ant-spin-dot-item {
+  background-color: #1e293b !important;
+}
+
+@media only screen and (max-width: 1024px) {
+  .container {
+    @apply w-full;
+  }
+
+  .section {
+    @apply py-7;
+  }
+}
+
+@media only screen and (max-width: 768px) {
+  .heading {
+    @apply text-xl leading-9;
+  }
+
+  .textParagraph {
+    @apply text-[16px] leading-7 mt-3;
+  }
+}
+
+/* Custom styles for the SmartWeld dashboard */
+.bg-white.bg-opacity-5 {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Progress bar colors */
+.ant-progress-bg.ant-progress-success-bg {
+  background-color: #22c55e !important;
+}
+
+/* Input field styles */
+.ant-input {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #fff !important;
+}
+
+.not-dark-theme-input .ant-input {
+  background-color: white !important;
+  color: gray !important;
+}
+
+.ant-input::placeholder {
+  color: #64748b !important;
+}
+
+/* Button styles */
+.ant-btn-primary {
+  background-color: #3b82f6 !important;
+}
+
+.ant-btn-primary:hover {
+  background-color: #2563eb !important;
+}
+
+/* Card styles refinement */
+.dark-theme-card {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.dark-theme-card .ant-card-head-title {
+  font-weight: 600;
+}
+
+.dark-theme-table .ant-spin-dot-item {
+  background-color: #eee !important;
+}
+
+/* Import realtime animations */
+@import url("./styles/realtime-animations.css");
+
+/* Realtime Dashboard Specific Styles */
+
+/* Gear spinning animation for running machines */
+@keyframes running-animation {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.running-animation {
+  animation: running-animation 2s linear infinite;
+}
+
+/* Pulse animation for live data */
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 5px rgba(34, 197, 94, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.8), 0 0 30px rgba(34, 197, 94, 0.6);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Chart container enhancements */
+.chart-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.chart-container::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.chart-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.chart-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.chart-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Real-time status indicators */
+.status-indicator {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.status-indicator::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.2;
+  animation: pulse 2s infinite;
+}
+
+/* Connection status animations */
+@keyframes connection-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.connection-indicator {
+  animation: connection-pulse 2s infinite;
+}
+
+/* Responsive optimizations for realtime components */
+@media (max-width: 768px) {
+  .running-animation {
+    animation-duration: 1.5s;
+  }
+
+  .chart-container {
+    padding: 8px;
+  }
+
+  .enhanced-hardware-modal .ant-modal-body {
+    padding: 16px 12px;
+  }
+}
+
+/* Performance optimizations */
+.hardware-accelerated {
+  transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  will-change: transform;
+}
+
+/* Dark theme specific enhancements for realtime */
+.dark-theme-realtime {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+  min-height: 100vh;
+}
+
+.dark-theme-realtime .ant-card {
+  background: rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark-theme-realtime .ant-card-head {
+  background: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.dark-theme-realtime .ant-card-body {
+  color: rgba(203, 213, 225, 0.9);
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .running-animation,
+  .pulse-glow,
+  .connection-indicator {
+    animation: none;
+  }
+}

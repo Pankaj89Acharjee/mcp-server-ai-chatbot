@@ -1,0 +1,135 @@
+import React from "react";
+
+
+export const enableEdit = (e, allJobData) => {
+    // console.log("E", e?.target)
+    // console.log("Job Id", allJobData)
+    const sentDataToComponent = {
+        eventTarget: e,
+        jobDetails: allJobData ? allJobData : ''
+    }
+    return sentDataToComponent
+};
+
+export const enableDelete = (e, allJobData) => {
+    // console.log("E", e?.target)
+    // console.log("Job Id", allJobData)
+    const sentDataToComponent = {
+        eventTarget: e,
+        jobDetails: allJobData ? allJobData : ''
+    }
+    return sentDataToComponent
+};
+
+
+const fillerMaterialColumn = [
+    {
+        title: <div style={{ fontSize: '14px', color: '#CDD1D2', textAlign: 'center' }}>Sl No</div>,
+        dataIndex: 'serial',
+        key: 'serial',
+        render: (text) => {
+            return {
+                props: {
+                    style: { background: "#737B7C" }
+                },
+                children: <div style={{ textAlign: 'center', justifyContent: 'center', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', textAlign: 'center', color: '#CDD1D2' }}>
+                        {text}
+                    </span>
+                </div>
+            }
+
+        },
+    },
+
+    {
+        title: <div style={{ fontSize: '14px', color: '#CDD1D2', textAlign: 'center' }}>Wire Name</div>,
+        dataIndex: 'fm_name',
+        key: 'fm_name',
+        render: (text) => {
+            return {
+                props: {
+                    style: { background: "#737B7C" }
+                },
+                children: <div style={{ textAlign: 'center', justifyContent: 'center', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', textAlign: 'center', color: '#CDD1D2' }}>
+                        {text}
+                    </span>
+                </div>
+            }
+
+        },
+    },
+
+    {
+        title: <div style={{ fontSize: '14px', color: '#CDD1D2', textAlign: 'center' }}>Wire Diameter</div>,
+        dataIndex: 'wire_diameter_mm',
+        key: 'wire_diameter_mm',
+        render: (text) => {
+            return {
+                props: {
+                    style: { background: "#737B7C" }
+                },
+                children: <div style={{ textAlign: 'center', justifyContent: 'center', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', textAlign: 'center', color: '#CDD1D2' }}>
+                        {text}
+                    </span>
+                </div>
+            }
+
+        },
+    },
+
+    {
+        title: <div style={{ fontSize: '14px', color: '#CDD1D2', textAlign: 'center' }}>Wire Cost/Kg</div>,
+        dataIndex: 'cost_per_kg',
+        key: 'cost_per_kg',
+        render: (text) => {
+            return {
+                props: {
+                    style: { background: "#737B7C" }
+                },
+                children: <div style={{ textAlign: 'center', justifyContent: 'center', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', textAlign: 'center', color: '#CDD1D2' }}>
+                        {text}
+                    </span>
+                </div>
+            }
+
+        },
+    },
+
+    
+    
+    {
+        title: <div style={{ fontSize: '14px', color: '#CDD1D2', textAlign: 'center' }}>Edit</div>,
+        dataIndex: 'edit',
+        key: 'edit',
+        render: (_, record) => {
+            <div style={{ textAlign: 'center', justifyContent: 'center', alignItems: 'center' }}>
+                <i onClick={(e) => enableEdit(e, record)}
+                    className="edit"
+                ><span className="material-symbols-outlined">
+                        edit
+                    </span></i>
+            </div>
+        }
+    },
+
+    {
+        title: <div style={{ fontSize: '14px', color: '#CDD1D2', textAlign: 'center' }}>Delete</div>,
+        dataIndex: 'delete',
+        key: 'delete',
+        render: (_, record) => (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <i onClick={(e) => enableDelete(e, record)} className="delete">
+                    <span className="material-symbols-outlined">delete</span>
+                </i>
+            </div>
+        )
+    }
+
+
+]
+
+export default fillerMaterialColumn
