@@ -15,7 +15,7 @@ const VisualizationRenderer = ({ visualization }) => {
 
     switch (type.toLowerCase()) {
         case 'table':
-            return <DataTable data={data} title={title} />;
+            return <DataTable data={data} title={title} config={config} />;
         case 'bar':
         case 'barchart':
         case 'bar_chart':

@@ -1,11 +1,18 @@
 import { Device } from "../models/device";
 import { DeviceTelemetry } from "../models/deviceTelemetry";
-import { sequelize } from "./db";
+import { Sequelize } from "sequelize";
+
+
+const sequelize = new Sequelize({
+    dialect: "sqlite",
+    storage: ".db.sequelize",
+    logging: false
+});
 
 export const connectDB = async () => {
     try {
         await sequelize.authenticate();
-        console.log("Database connected...")
+        console.log("SQLite Database connected...")
 
         Device.hasMany(DeviceTelemetry, {
             foreignKey: 'deviceId',

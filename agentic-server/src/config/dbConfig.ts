@@ -24,21 +24,6 @@ function getDbConfig(): DatabaseConfig {
   const sanitizedUser = DB_USER.replace(/,+$/g, '').trim();
   const sanitizedPass = (DB_PASSWORD || '').trim();
 
-  // Debug logs: raw env and sanitized host (mask password)
-  try {
-    // eslint-disable-next-line no-console
-    console.log('DB env raw:', {
-      DB_HOST,
-      DB_PORT,
-      DB_NAME,
-      DB_USER,
-      DB_PASSWORD,
-      DB_SCHEMA,
-    });
-    // eslint-disable-next-line no-console
-    console.log('DB host sanitized:', sanitizedHost, 'rawCodes:', Array.from(DB_HOST).map((c) => c.charCodeAt(0)));
-    console.log('DB user sanitized:', sanitizedUser, 'rawCodes:', Array.from(DB_USER).map((c) => c.charCodeAt(0)));
-  } catch {}
 
   return {
     schema: (DB_SCHEMA || '').trim(),

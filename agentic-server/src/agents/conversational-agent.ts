@@ -2,10 +2,32 @@ import 'dotenv/config';
 import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage, SystemMessage, AIMessage } from '@langchain/core/messages';
 import { StateGraph, MessagesAnnotation } from "@langchain/langgraph";
+import { MemorySaver } from "@langchain/langgraph";
 import { callTool as callMCPTool, listTools as listMCPTools } from '../mcp/mcpToolWrapper';
+import { robustJSONParse } from '../helpers/jsonParser';
+
+// ==================== TYPES AND INTERFACES ====================
+
+interface AgentState {
+    conversationMemory: Map<string, any[]>;
+    systemMessage: string;
+    workflow: any;
+    checkpointer: any;
+}
+
+interface ConversationResponse {
+    content: any;
+    sessionId: string;
+    timestamp: string;
+    error?: boolean;
+    type?: string;
+    isGeneric?: boolean;
+}
+
+// ==================== PURE FUNCTIONS ====================
 
 //---------- Step1: Dynamically Load MCP Tools ------------------
-const loadMCPTools = async () => {
+const loadMCPTools = async (): Promise<any[]> => {
     try {
         const mcpTools = await listMCPTools();
         console.log(`📋 Found ${mcpTools.length} MCP tools:`, mcpTools.map(t => t.name));
@@ -41,17 +63,13 @@ if (!validateOpenAIApiKey(openaiAPIKey)) {
     console.warn("⚠️ OpenAI API key format looks incorrect. Expected format: sk-...");
 }
 
-console.log("🔑 Using OpenAI as LLM provider");
-
-// Create model with tools using OpenAI
-const createModelWithTools = async () => {
+// Creating model with tools using OpenAI
+const createModelWithTools = async (): Promise<any> => {
     const tools = await loadMCPTools();
 
     try {
-        console.log("🔄 Initializing OpenAI GPT-4o-mini model...");
-
         const chatModel = new ChatOpenAI({
-            model: "gpt-4o",  // Latest GPT-4o model
+            model: "gpt-4o",
             apiKey: openaiAPIKey,
             temperature: 0,
             maxTokens: 2048,
@@ -59,57 +77,54 @@ const createModelWithTools = async () => {
             timeout: 30000,
         });
 
-        // Test the model with a simple call
+        //Just to test the connection, not a part of the workflow
         await chatModel.invoke([new HumanMessage("Test")]);
-        console.log("✅ Successfully connected to OpenAI GPT-4o-mini");
-
         return chatModel.bindTools(tools);
 
     } catch (error) {
-        console.error("❌ OpenAI GPT-4o connection failed:", (error as Error).message);
-        throw new Error(`OpenAI failed: ${(error as Error).message}`);
+        console.error("❌ Connection between LLM failed:", (error as Error).message);
+        throw new Error(`LLM Connection failed: ${(error as Error).message}`);
     }
 };
 
-// ----------------- Step 3: Enhanced Nodes with Error Handling -----------------
+// ----------------- Step 3: Pure Functions for Workflow Nodes -----------------
 
-// Define the function that calls the model
-const callModel = async (state: typeof MessagesAnnotation.State) => {
+const callModel = async (state: typeof MessagesAnnotation.State): Promise<any> => {
     try {
-        console.log("🤖 Calling OpenAI GPT-4o model...");
-
         const model = await createModelWithTools();
+        
         const response = await model.invoke(state.messages);
-
-        console.log("✅ OpenAI GPT-4o response received");
+        
+        // Log tool calls if any
+        if (response.tool_calls && response.tool_calls.length > 0) {
+            console.log("🔧 LLM decided to call tools:", response.tool_calls.map((tc: any) => ({
+                name: tc.name,
+                args: tc.args
+            })));
+        }
+        
         return { messages: [response] };
-
     } catch (error: any) {
-        console.error("❌ OpenAI GPT-4o call failed:", error);
-
-        // Return error as AI response
+        console.error("❌ LLM call failed:", error);
         return {
-            messages: [{
-                role: "assistant",
-                content: JSON.stringify({
-                    summary: `OpenAI API Error: ${error.message || 'Unknown error'}`,
-                    data: [],
-                    visualizations: [],
-                    insights: ["LLM service temporarily unavailable"],
-                    recommendations: [
-                        "Check your OPENAI_API_KEY in .env file",
-                        "Verify your OpenAI account has credits available",
-                        "Try again in a few moments",
-                        "Check OpenAI status at https://status.openai.com/"
-                    ]
-                })
-            }]
+            messages: [new AIMessage(JSON.stringify({
+                summary: `LLM Error: ${error.message || 'Unknown error'}`,
+                data: [],
+                visualizations: [],
+                insights: ["LLM service temporarily unavailable"],
+                recommendations: [
+                    "Check your OPENAI_API_KEY in .env file",
+                    "Verify your OpenAI account has credits available",
+                    "Try again in a few moments",
+                    "Check OpenAI status at https://status.openai.com/"
+                ]
+            }))]
         };
     }
 };
 
 // Custom tool node that handles MCP tool execution
-const callTools = async (state: typeof MessagesAnnotation.State) => {
+const callTools = async (state: typeof MessagesAnnotation.State): Promise<any> => {
     const { messages } = state;
     const lastMessage = messages[messages.length - 1] as AIMessage;
 
@@ -123,14 +138,7 @@ const callTools = async (state: typeof MessagesAnnotation.State) => {
 
     for (const toolCall of lastMessage.tool_calls) {
         try {
-            console.log(`🔧 Executing tool: ${toolCall.name} with args:`, toolCall.args);
-            console.log(`🔧 Args type:`, typeof toolCall.args);
-            console.log(`🔧 Args keys:`, toolCall.args ? Object.keys(toolCall.args) : 'undefined');
-
-            // Pass the args directly to the MCP tool - let it handle validation
             const result = await callMCPTool(toolCall.name, toolCall.args || {});
-
-            console.log(`🔧 Tool ${toolCall.name} result:`, JSON.stringify(result, null, 2));
 
             toolMessages.push({
                 role: "tool",
@@ -138,9 +146,6 @@ const callTools = async (state: typeof MessagesAnnotation.State) => {
                 tool_call_id: toolCall.id,
                 name: toolCall.name
             });
-
-            console.log(`✅ Tool ${toolCall.name} executed successfully`);
-
         } catch (error) {
             console.error(`❌ Error executing tool ${toolCall.name}:`, error);
             toolMessages.push({
@@ -157,60 +162,101 @@ const callTools = async (state: typeof MessagesAnnotation.State) => {
     return { messages: toolMessages };
 };
 
-// ----------------- Step 4: Define Conditional Logic -----------------
-function shouldContinue({ messages }: typeof MessagesAnnotation.State) {
+// ----------------- Step 4: Pure Conditional Logic -----------------
+const shouldContinue = ({ messages }: typeof MessagesAnnotation.State): string => {
+    
     const lastMessage = messages[messages.length - 1] as AIMessage;
 
     // Continue only if the last message is an AI message with tool calls
     if (lastMessage.tool_calls?.length) {
-        console.log("🔄 Continuing to process tool calls.");
+        console.log("🔄 Continuing to process tool calls in SHORT-TERM MEMORY by SHOULD CONTINUE F(x).", lastMessage.tool_calls?.length);
         return "tools";
     }
 
     // Otherwise, end the workflow
     console.log("🏁 Ending workflow. No tool calls or final response received.");
     return "__end__";
-}
-
-// ----------------- Step 5: Build Workflow -----------------
-const createWorkflow = () => {
-    return new StateGraph(MessagesAnnotation)
-        .addNode("agent", callModel)
-        .addEdge("__start__", "agent") // __start__ is a special name for the entrypoint
-        .addNode("tools", callTools)
-        .addEdge("tools", "agent")
-        .addConditionalEdges("agent", shouldContinue);
 };
 
-// ----------------- Step 6: Enhanced Main Function -----------------
-export const getConversationalResponse = async (input: string, sessionId: string | null = null) => {
-    console.log("🚀 SmartWeld AI - Processing:", input);
+// ----------------- Step 5: Pure Functions for State Management -----------------
 
-    try {
-        // CLEAR STOP SIGNAL: Tell LLM exactly when to stop
-        const systemMessage = `You are an intelligent data analyst. You can answer questions by calling specific tools.
+// Create system message (pure function)
+const createSystemMessage = (): string => {
+    return `
+        You are an intelligent data analyst with conversation memory. You can answer questions by calling specific tools and remember previous interactions.
 
-Tool: query-database
-Description: Unified tool that handles all database queries intelligently.
+        Tool: query-database
+        Description: Unified tool that handles all database queries intelligently.
 
-When the user asks a question about the database, you MUST call the "query-database" tool. This tool accepts either 'query' OR 'clientQuestion' parameter.
-Example: For a user question like "How many users exist?", you should call the tool with:
-query-database(query="How many users exist?")
+        CONVERSATION MEMORY:
+        - You have access to the full conversation history
+        - Reference previous questions and answers when relevant
+        - Build upon previous context to provide better responses
+        - If asked about previous interactions, summarize what was discussed
 
-        CRITICAL: YOU MUST CALL TOOLS!
+        RESPONSE FORMAT RULES:
+        1. For DATABASE questions (containing words like: list, show, count, users, sensors, hardware, data, table, etc.):
+        - MUST call query-database tool
+        - MUST return JSON format only
+        - MUST include MULTIPLE visualizations (table + bar_chart + pie_chart) for rich data
         
-        WORKFLOW RULES:
-        1. For ANY database question, you MUST IMMEDIATELY call the 'query-database' tool
-        2. NEVER answer database questions without calling the tool first
-        3. Call the tool exactly ONCE with: query-database(query="user's question")
-        4. Wait for the tool result, then format it into JSON
-        5. STOP after formatting the response
+        2. For NON-DATABASE questions (greetings, general chat, help, follow-ups):
+        - Return simple text response
+        - Reference conversation history when appropriate
+        - Format: "I'm a SmartWeld data analyst assistant. Please ask me about your database - like 'list all users' or 'count sensors'."
+
+        DATABASE QUESTION DETECTION:
+        If user asks about: users, sensors, hardware, data, tables, count, list, show, database, SQL, records, etc.
+        → Use query-database tool and return JSON
+
+        NON-DATABASE QUESTION:
+        If user says: hello, hi, help, thanks, etc.
+        → Return simple helpful text
+
+        Example DATABASE: "List all users" → Call tool → Return JSON with multiple visualizations
+        Example NON-DATABASE: "Hello" → Return "I'm a SmartWeld data analyst assistant. Please ask me about your database."
         
-        DO NOT:
-        - Answer database questions without using tools
-        - Make assumptions about data
-        - Skip tool calls
-        
+        MULTI-VISUALIZATION EXAMPLE:
+        For "Show user statistics" query, return:
+        {
+            "summary": "Found 150 users across 3 roles",
+            "data": [{"role": "admin", "count": 10}, {"role": "user", "count": 120}, {"role": "guest", "count": 20}],
+            "visualizations": [
+                {
+                    "type": "table",
+                    "title": "User Statistics Table",
+                    "data": [["admin", 10], ["user", 120], ["guest", 20]],
+                    "config": {"columns": ["Role", "Count"]}
+                },
+                {
+                    "type": "bar_chart",
+                    "title": "Users by Role",
+                    "data": [{"role": "admin", "count": 10}, {"role": "user", "count": 120}, {"role": "guest", "count": 20}],
+                    "config": {
+                        "xAxis": "role",
+                        "yAxis": "count",
+                        "annotations": [
+                            {"type": "text", "x": "user", "y": 120, "text": "80% of users"}
+                        ]
+                    }
+                },
+                {
+                    "type": "pie_chart",
+                    "title": "User Distribution",
+                    "data": [{"role": "admin", "count": 10}, {"role": "user", "count": 120}, {"role": "guest", "count": 20}],
+                    "config": {
+                        "xAxis": "role",
+                        "yAxis": "count",
+                        "annotations": [
+                            {"type": "text", "x": "user", "y": 120, "text": "Majority"}
+                        ]
+                    }
+                }
+            ],
+            "insights": ["80% of users are regular users", "Admin users represent 6.7% of total"],
+            "recommendations": ["Consider role-based access controls", "Monitor guest user activity"]
+        }
+    
         MANDATORY RESPONSE FORMAT (JSON only):
             {
             "summary": "Clear explanation of findings",
@@ -222,7 +268,15 @@ query-database(query="How many users exist?")
                 "data": [...], // Processed data for visualization
                 "config": {
                     "xAxis": "column_name",
-                    "yAxis": "column_name"
+                    "yAxis": "column_name",
+                    "annotations": [
+                        {
+                            "type": "text",
+                            "x": "data_point",
+                            "y": "value",
+                            "text": "Annotation text"
+                        }
+                    ]
                 }
                 }
             ],
@@ -231,16 +285,23 @@ query-database(query="How many users exist?")
             }
 
             CRITICAL LIMITS:
-            - Keep data array to maximum 3 records only
-            - Keep total response under 2000 characters
+            - For table listings: Include ALL tables in data array (no limit)
+            - For other data: Keep data array to maximum 5 records for display
+            - Keep total response under 3000 characters
             - This prevents JSON parsing errors
 
             VISUALIZATION GUIDELINES:
+            - ALWAYS include MULTIPLE chart types when data has comparisons or multiple categories
+            - REQUIRED: Include at least 3 visualization types (table, bar_chart, pie_chart) for rich data
             - table: Always include for raw data display
-            - bar_chart: For comparisons, rankings, quantities
-            - pie_chart: For categorical breakdowns, status distributions  
-            - line_chart: For time-based data, trends
-            - metric_card: For key numbers, totals, counts
+            - For table listings: Include ALL tables in the data array, not just first few
+            - TABLE DATA STRUCTURE: data must be array of arrays (rows), not flat array
+            - TABLE CONFIG: Use "columns" or "headers", NOT "xAxis"/"yAxis" (those are for charts)
+            - bar_chart: For comparisons, rankings, quantities, distributions
+            - pie_chart: For categorical breakdowns, percentages, proportions
+            - line_chart: For time-based data, trends, progressions
+            - metric_card: For key numbers, totals, counts, KPIs
+            - ANNOTATIONS: Always include relevant annotations for charts to highlight key insights
 
             EXAMPLES OF GOOD BEHAVIOR:
             ❌ "I need to find sensor downtime data"
@@ -249,6 +310,28 @@ query-database(query="How many users exist?")
             ❌ "Could you specify which table?"
             ✅ *Lists tables, identifies relevant ones* → Shows actual data
 
+            MULTI-CHART EXAMPLE:
+            ✅ "Show user statistics" → Include table + bar_chart + pie_chart
+            ✅ "Compare sensor data" → Include bar_chart + pie_chart + line_chart
+            ✅ "Analyze downtime reasons" → Include pie_chart + bar_chart + table
+            
+            TABLE LISTING EXAMPLE:
+            ✅ "List all tables" → Include ALL tables in data array, not just first 3
+            ✅ "Show database tables" → Return complete list with all table names
+            ✅ CORRECT TABLE STRUCTURE:
+               "data": [["migrations"], ["password_resets"], ["failed_jobs"]]
+               "config": {"columns": ["Table Name"]}
+            ❌ WRONG TABLE STRUCTURE:
+               "data": ["migrations", "password_resets", "failed_jobs"]
+               "config": {"xAxis": "Table Names", "yAxis": "Count"}
+            
+            ANNOTATION EXAMPLE:
+            ✅ Include annotations to highlight key data points:
+               "annotations": [
+                   {"type": "text", "x": "High Value", "y": 150, "text": "Peak Performance"},
+                   {"type": "text", "x": "Low Value", "y": 25, "text": "Needs Attention"}
+               ]
+
             ALWAYS be helpful, proactive, and provide complete responses with actual data.
                 
         CRITICAL INSTRUCTIONS:
@@ -256,97 +339,223 @@ query-database(query="How many users exist?")
         - If the tool returns no data or an empty result, your final JSON MUST reflect this. Example: {"summary": "No data found for this query.", "data": [], ...}.
         - The 'query' argument for the tool must be a string.
         - If the query fails, explain the failure concisely in the 'summary' and 'insights' fields of the final JSON.`;
+};
 
-        // Create and run workflow - SIMPLE like official docs
-        const workflow = createWorkflow();
-        const app = workflow.compile();
+// Create workflow (pure function)
+const createWorkflow = (): any => {
+    const graph = new StateGraph(MessagesAnnotation)
+        .addNode("agent", callModel)
+        .addEdge("__start__", "agent")
+        .addNode("tools", callTools)
+        .addEdge("tools", "agent")
+        .addConditionalEdges("agent", shouldContinue);
 
-        console.log("🔄 Starting simple workflow...");
-        const finalState = await app.invoke({
-            messages: [
-                new SystemMessage(systemMessage),  // ← ENABLED system message
-                new HumanMessage(input)
-            ]
-        });
+    return graph.compile();
+};
 
-        const lastMessage = finalState.messages[finalState.messages.length - 1];
-        const content = lastMessage.content;
-        console.log("🔍 Raw LLM Response:", content);
-        console.log("🔍 LLM Response whether string:", typeof content === 'string' ? content.substring(0, 200) + "..." : content);
-        console.log("🔍 Raw LLM Response Length:", typeof content === 'string' ? content.length : 'N/A');
-        console.log("🔍 Raw LLM Response Type:", typeof content);
-        console.log("🔍 Total messages in workflow:", finalState.messages.length);
-        console.log("🔍 Tool calls made:", (lastMessage as AIMessage).tool_calls?.length || 0);
+// Create agent state (pure function)
+const createAgentState = (): AgentState => {
+    return {
+        conversationMemory: new Map(),
+        systemMessage: createSystemMessage(),
+        workflow: createWorkflow(),
+        checkpointer: new MemorySaver()
+    };
+};
 
-        // Log all messages to see the conversation flow
-        console.log("🔍 All messages in workflow:");
+// Parse response (pure function)
+const parseResponse = (response: any): any => {
+    const lastMessage = response.messages[response.messages.length - 1];
+    const rawContent = lastMessage.content;
 
+    // Check for generic responses
+    if (typeof rawContent === "string") {
+        const isGenericResponse = rawContent && (
+            rawContent.toLowerCase().includes('hello') ||
+            rawContent.toLowerCase().includes('assist') ||
+            rawContent.toLowerCase().includes('help') ||
+            rawContent.toLowerCase().includes('how can i') ||
+            rawContent.toLowerCase().includes("i'm a data analyst") ||
+            rawContent.toLowerCase().includes("please ask me about") ||
+            rawContent.length < 200
+        );
 
-        finalState.messages.forEach((msg, index) => {
-            console.log(`  ${index}: ${msg.constructor.name} - ${typeof msg.content === 'string' ? msg.content.substring(0, 100) + "..." : JSON.stringify(msg.content).substring(0, 100) + "..."}`);
-        });
-
-        // Parse JSON response with better extraction
-        let parsedContent;
-        try {
-            const rawContent = lastMessage.content;
-
-            if (typeof rawContent !== "string") {
-                // If content is already an object (e.g., a ToolMessage result), use it directly.
-                parsedContent = rawContent;
-            } else {
-                // Attempt to parse the string content as JSON.
-                // It's best to avoid manual string cleanup.
-                // The LLM should be instructed to provide valid JSON.
-                parsedContent = JSON.parse(rawContent.trim());
-            }
-
-            console.log("✅ JSON parsing successful");
-
-        } catch (err) {
-            console.error("❌ JSON Parsing Error:", err);
-            console.error("📝 Raw content that failed:", lastMessage.content);
-
-            // Provide a standardized error response, since parsing failed.
-            parsedContent = {
-                summary: "An error occurred while parsing the AI's response.",
-                data: [],
-                visualizations: [],
-                insights: [`Parsing error: ${err instanceof Error ? err.message : 'Unknown'}`],
-                recommendations: [
-                    "The model may have provided an invalid format.",
-                    "Please try rephrasing your question.",
-                    "Review the prompt to ensure it forces valid JSON."
-                ]
-            };
+        if (isGenericResponse) {
+            console.log("🔄 Detected generic response, returning as simple text");
+            return rawContent;
         }
+    }
+
+    // Parse JSON responses
+    try {
+        if (typeof rawContent !== "string") {
+            return rawContent;
+        } else {
+            return robustJSONParse(rawContent);
+        }
+    } catch (err) {
+        console.error("❌ JSON Parsing Error:", err);
         return {
-            content: parsedContent,
-            sessionId,
-            timestamp: new Date().toISOString()
-        };
-
-
-
-    } catch (error) {
-        console.error("❌ Agent Error:", error);
-        return {
-            content: {
-                summary: `System Error: ${error instanceof Error ? error.message : 'Unknown'}`,
-                data: [],
-                visualizations: [],
-                insights: ["System error occurred"],
-                recommendations: ["Check system connectivity", "Verify API keys", "Try again"]
-            },
-            sessionId,
-            timestamp: new Date().toISOString(),
-            error: true
+            summary: "An error occurred while parsing the AI's response.",
+            data: [],
+            visualizations: [],
+            insights: [`Parsing error: ${err instanceof Error ? err.message : 'Unknown'}`],
+            recommendations: [
+                "The model may have provided an invalid format.",
+                "Please try rephrasing your question.",
+                "Review the prompt to ensure it forces valid JSON."
+            ]
         };
     }
 };
 
-// Enhanced debug function
-export const debugMCPConnection = async () => {
+// Store conversation (pure function - returns new state)
+const storeConversation = (state: AgentState, sessionId: string, messages: any[]): AgentState => {
+    // Only store the conversation messages (excluding system message)
+    const conversationMessages = messages.filter(msg => 
+        msg.constructor.name !== 'SystemMessage'
+    );
+    
+    const newMemory = new Map(state.conversationMemory);
+    newMemory.set(sessionId, conversationMessages);
+    
+    console.log(`💾 Stored ${conversationMessages.length} conversation messages for session: ${sessionId}`);
+    
+    return {
+        ...state,
+        conversationMemory: newMemory
+    };
+};
+
+// Get conversation history (pure function)
+const getConversationHistory = (state: AgentState, sessionId: string): any[] => {
+    try {
+        return state.conversationMemory.get(sessionId) || [];
+    } catch (error) {
+        console.error("Error getting conversation history:", error);
+        return [];
+    }
+};
+
+// Clear conversation history (pure function - returns new state)
+const clearConversationHistory = (state: AgentState, sessionId: string): AgentState => {
+    try {
+        const newMemory = new Map(state.conversationMemory);
+        newMemory.delete(sessionId);
+        console.log(`🗑️ Cleared conversation history for session: ${sessionId}`);
+        
+        return {
+            ...state,
+            conversationMemory: newMemory
+        };
+    } catch (error) {
+        console.error("Error clearing conversation history:", error);
+        return state;
+    }
+};
+
+// ==================== MAIN CONVERSATIONAL FUNCTION ====================
+
+// Main function to get conversational response (pure function)
+export const getConversationalResponse = async (
+    input: string, 
+    sessionId: string | null = null,
+    existingState?: AgentState
+): Promise<{ response: ConversationResponse; updatedState: AgentState }> => {
+    // Create new state for this request (request-scoped)
+    const state = existingState || createAgentState();
+    
+    // Generate session ID if not provided
+    const threadId = sessionId || `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    
+    console.log(`💬 Processing chat message for session: ${threadId}`);
+    
+    try {
+        // Get conversation history from state
+        const history = getConversationHistory(state, threadId);
+        console.log(`🔍 Retrieved ${history.length} messages from history`);
+
+        // Create messages array with system message and history
+        const messages = [
+            new SystemMessage(state.systemMessage),
+            ...history,
+            new HumanMessage(input)
+        ];
+
+        console.log(`📤 Sending ${messages.length} messages to workflow`);
+
+        // Run workflow
+        const response = await state.workflow.invoke({ messages });
+
+        console.log(`✅ Response generated for session: ${threadId}`);
+
+        // Store the conversation in state (immutable update)
+        const updatedState = storeConversation(state, threadId, messages);
+
+        // Parse response
+        const parsedContent = parseResponse(response);
+
+        return {
+            response: {
+                content: parsedContent,
+                sessionId: threadId,
+                timestamp: new Date().toISOString()
+            },
+            updatedState
+        };
+
+    } catch (error) {
+        console.error("❌ Agent Error:", error);
+        
+        // Check if it's a database connection error
+        const isDbError = error instanceof Error && (
+            error.message.includes('ECONNRESET') || 
+            error.message.includes('Connection') ||
+            error.message.includes('timeout')
+        );
+        
+        if (isDbError) {
+            return {
+                response: {
+                    content: {
+                        summary: "I'm having trouble connecting to the database right now. Let me try to help you with general questions while the connection is being restored.",
+                        data: [],
+                        visualizations: [],
+                        insights: ["Database connection temporarily unavailable"],
+                        recommendations: ["Try asking general questions", "Check back in a few minutes", "Contact support if the issue persists"]
+                    },
+                    sessionId: sessionId || 'default',
+                    timestamp: new Date().toISOString(),
+                    error: true,
+                    type: 'text',
+                    isGeneric: true
+                },
+                updatedState: state
+            };
+        }
+        
+        return {
+            response: {
+                content: {
+                    summary: `System Error: ${error instanceof Error ? error.message : 'Unknown'}`,
+                    data: [],
+                    visualizations: [],
+                    insights: ["System error occurred"],
+                    recommendations: ["Check system connectivity", "Verify API keys", "Try again"]
+                },
+                sessionId: sessionId || 'default',
+                timestamp: new Date().toISOString(),
+                error: true
+            },
+            updatedState: state
+        };
+    }
+};
+
+// ==================== UTILITY FUNCTIONS ====================
+
+// Enhanced debug function (pure function)
+export const debugMCPConnection = async (): Promise<any> => {
     try {
         console.log("🔍 Testing OpenAI GPT-4o connection...");
 
@@ -380,7 +589,21 @@ export const debugMCPConnection = async () => {
     }
 };
 
+// ==================== EXPORTS ====================
+
+// Export individual functions for direct import
+export {
+    createAgentState,
+    getConversationHistory,
+    clearConversationHistory,
+    storeConversation
+};
+
 export default {
     getConversationalResponse,
-    debugMCPConnection
+    debugMCPConnection,
+    createAgentState,
+    getConversationHistory,
+    clearConversationHistory,
+    storeConversation
 };

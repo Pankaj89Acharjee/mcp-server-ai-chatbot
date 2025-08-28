@@ -4,8 +4,6 @@ import { langchainTool } from "./tools/databaseTools/langchainTool.js"; // Use L
 import { listTablesTool } from "./tools/databaseTools/listTables.js";
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { getAlertsTool } from "./tools/weatherForecastTool/getAlerts.js";
-import { getForecastTool } from "./tools/weatherForecastTool/getForecase.js";
 import { z } from "zod";
 //Server Creation
 const server = new McpServer({
@@ -44,8 +42,8 @@ async function main() {
     registerTools(langchainTool); // LangChain SQL agent that actually works
     registerTools(listTablesTool); // Only for listing tables
     //Register Weather Tool
-    registerTools(getAlertsTool);
-    registerTools(getForecastTool);
+    // registerTools(getAlertsTool)
+    // registerTools(getForecastTool)
     const transportMode = (process.env.TRANSPORT || "stdio").toLowerCase();
     if (transportMode === "stdio") {
         const transport = new StdioServerTransport();

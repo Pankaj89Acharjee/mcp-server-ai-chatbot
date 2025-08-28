@@ -51,8 +51,8 @@ async function main() {
     registerTools(listTablesTool)     // Only for listing tables
 
     //Register Weather Tool
-    registerTools(getAlertsTool)
-    registerTools(getForecastTool)
+    // registerTools(getAlertsTool)
+    // registerTools(getForecastTool)
 
 
     const transportMode = (process.env.TRANSPORT || "stdio").toLowerCase();

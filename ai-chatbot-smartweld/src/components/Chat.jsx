@@ -60,6 +60,29 @@ const RobotIcon = ({ size = 16 }) => (
 
 // Message Component
 const MessageBubble = ({ message: msg, isBot, onViewDetails }) => {
+  // Helper function to safely render content
+  const renderContent = (content) => {
+    if (typeof content === 'string') {
+      return content;
+    } else if (typeof content === 'object' && content !== null) {
+      // If it's an object, try to extract meaningful text
+      if (content.summary) {
+        return content.summary;
+      } else if (content.message) {
+        return content.message;
+      } else if (content.error) {
+        return `Error: ${content.error}`;
+      } else {
+        // Fallback: stringify the object for debugging
+        return JSON.stringify(content, null, 2);
+      }
+    } else if (content === null || content === undefined) {
+      return 'No response received';
+    } else {
+      return String(content);
+    }
+  };
+
   return (
     <div className={`flex gap-3 mb-6 ${isBot ? 'justify-start' : 'justify-end'} animate-in fade-in duration-300 slide-in-from-bottom-2`}>
       {isBot && (
@@ -73,26 +96,9 @@ const MessageBubble = ({ message: msg, isBot, onViewDetails }) => {
           : 'bg-gray-600 text-white ml-auto opacity-60 rounded-tr-3xl rounded-bl-3xl'
           } ${isBot ? '' : 'max-w-[80%]'}`}>
           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words overflow-x-auto">
-            {msg.content}
+            {renderContent(msg.content)}
           </p>
 
-          {/* View Details Button for API responses with visualizations */}
-          {/* {hasVisualization && (
-            navigate(`/aiChat?t=${Date.now()}`),
-            <button
-              onClick={() => {
-                onViewDetails(msg.apiResponse);
-                // Add timestamp to force fresh data load
-                //navigate(`/aiChat?t=${Date.now()}`);
-              }}
-              className="flex items-center gap-2 mt-3 px-3 py-2 bg-blue-600 hover:bg-blue-500 
-              text-white text-xs rounded-md transition-colors"
-            >
-              <ChartIcon size={14} />
-              View Detailed Analysis
-              <ArrowRightIcon size={14} />
-            </button>
-          )} */}
           {msg.timestamp && (
             <p className={`text-xs mt-1 ${isBot ? 'text-gray-400' : 'text-blue-100'}`}>
               {msg.timestamp}
@@ -241,13 +247,13 @@ const Chat = ({ currentColor }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [attachments, setAttachments] = useState([]);
   const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
-  const [currentView, setCurrentView] = useState('chat'); // 'chat' or 'results'
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [chatWidth, setChatWidth] = useState(400);
   const [chatHeight, setChatHeight] = useState(600);
   const [chatServerStatus, setChatServerStatus] = useState('');
   const [currentResults, setCurrentResults] = useState(null);
+  const [sessionId, setSessionId] = useState(null);
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -269,7 +275,14 @@ const Chat = ({ currentColor }) => {
   useEffect(() => {
     scrollToBottom();
     getChatServerStatus();
-  }, [messages, isTyping]);
+
+    // Initialize session ID if not set
+    if (!sessionId) {
+      const newSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      setSessionId(newSessionId);
+      console.log('🆔 New conversation session created:', newSessionId);
+    }
+  }, [messages, isTyping, sessionId]);
 
   // Auto-navigate to results page when a message with visualizations is added
   useEffect(() => {
@@ -319,7 +332,7 @@ const Chat = ({ currentColor }) => {
       // Calling API for getting data from the agent
       const userMsgFormat = {
         message: text,
-        sessionId: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        sessionId: sessionId || `session-${Date.now()}`
       }
 
       const apiResponse = await callAgentAPI(userMsgFormat);
@@ -327,16 +340,36 @@ const Chat = ({ currentColor }) => {
         let botMessage;
 
         if (apiResponse && apiResponse.reply) {
-          // API returned structured data
+       
+          let content = '';
+
+      
+          if (typeof apiResponse.reply === 'string') {
+            content = apiResponse.reply;
+          } else if (typeof apiResponse.reply === 'object' && apiResponse.reply !== null) {
+            if (apiResponse.reply.summary) {
+              content = apiResponse.reply.summary;
+            } else if (apiResponse.reply.message) {
+              content = apiResponse.reply.message;
+            } else if (apiResponse.reply.error) {
+              content = `Error: ${apiResponse.reply.error}`;
+            } else {
+              // Fallback: try to stringify the object
+              content = JSON.stringify(apiResponse.reply, null, 2);
+            }
+          } else {
+            content = 'Received an unexpected response format';
+          }
+
           botMessage = {
             id: Date.now() + 1,
-            content: apiResponse.reply.summary,
+            content: content,
             isBot: true,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            apiResponse: apiResponse // Storing the full API response
+            apiResponse: apiResponse 
           };
         } else {
-          // Regular chat response
+         
           let botResponse = '';
           if (text.toLowerCase().includes('hello') || text.toLowerCase().includes('hi')) {
             botResponse = "Hello! I'm here to help you analyze data and create visualizations. Ask me about downtime records, sensors, or any data analysis!";
@@ -358,6 +391,16 @@ const Chat = ({ currentColor }) => {
 
     } catch (error) {
       console.error('Error sending message:', error);
+
+      // Create error message
+      const errorMessage = {
+        id: Date.now() + 1,
+        content: `Sorry, I encountered an error while processing your request: ${error.message || 'Unknown error'}. Please try again.`,
+        isBot: true,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      setMessages(prev => [...prev, errorMessage]);
       setIsTyping(false);
     }
   };
@@ -380,7 +423,7 @@ const Chat = ({ currentColor }) => {
   };
 
 
-  // Move all hooks to the top, before any conditional returns
+  
   const handleMouseMove = useCallback((e) => {
     if (!isResizing) return;
 
@@ -415,7 +458,6 @@ const Chat = ({ currentColor }) => {
 
   const handleViewDetails = (apiResponse) => {
     setCurrentResults(apiResponse);
-    setCurrentView('results');
     // Store the API response in localStorage for ChatResponse component
     localStorage.setItem('chatAnalysisResults', JSON.stringify(apiResponse));
     // Dispatch custom event to notify ChatResponse component
@@ -459,7 +501,7 @@ const Chat = ({ currentColor }) => {
 
   return (
     <>
-      {/* Collapse Button - positioned on the left side when collapsed */}
+      {/* Collapse Button */}
       {isCollapsed && (
         <div className="fixed top-1/2 right-4 transform -translate-y-1/2 z-[1001]">
           <button
@@ -500,17 +542,24 @@ const Chat = ({ currentColor }) => {
             </div>
             <div>
               <h1 className="text-sm font-semibold text-white">SmartWeld Assistant</h1>
-              {chatServerStatus === 'OK' ? (
-                <p className="text-xs text-green-400 flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  Online
-                </p>
-              ) : (
-                <p className="text-xs text-red-400 flex items-center gap-1">
-                  <div className="w-2 h-2 bg-red-400 rounded-full"></div>
-                  Offline
-                </p>
-              )}
+              <div className="flex items-center gap-2">
+                {chatServerStatus === 'OK' ? (
+                  <p className="text-xs text-green-400 flex items-center gap-1">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    Online
+                  </p>
+                ) : (
+                  <p className="text-xs text-red-400 flex items-center gap-1">
+                    <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+                    Offline
+                  </p>
+                )}
+                {sessionId && (
+                  <p className="text-xs text-gray-400">
+                    Session: {sessionId.split('-')[2]?.substr(0, 6) || 'N/A'}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -607,6 +656,22 @@ const Chat = ({ currentColor }) => {
               onClick={() => setInputValue("Show me the dashboard")}
             >
               Dashboard
+            </button>
+            <button
+              className="text-xs px-3 py-1 rounded-md bg-red-700 text-gray-300 hover:bg-red-600 transition-colors"
+              onClick={() => {
+                const newSessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                setSessionId(newSessionId);
+                setMessages([{
+                  id: Date.now(),
+                  content: "Hello! I'm your Smartweld AI assistant. I can analyze your data and create visualizations. What are you looking for? Just ask!",
+                  isBot: true,
+                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                }]);
+                console.log('🔄 New conversation session started:', newSessionId);
+              }}
+            >
+              New Chat
             </button>
           </div>
         </div>

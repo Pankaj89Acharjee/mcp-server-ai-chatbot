@@ -47,7 +47,7 @@ import AuthGuard from "../../authentication/AuthGurad";
 // Custom hooks
 import useIdleTimer from "../../customHooks/useIdleTimers";
 import PlannedDowntimeManagement from "../../pages/PlannedDowntimeManagement";
-import ChatResponse from "../../pages/ChatResponse";
+import ChatResponse from "../../pages/ChatResponseDisplay";
 
 const DashboardLayout = () => {
   const {
